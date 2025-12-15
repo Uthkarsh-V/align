@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ALIGN - AI Biomechanical Coach</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div id="onboarding-modal">
+    <div class="modal-content">
+      <h2>Welcome to ALIGN</h2>
+      <p>Please fill out your profile to personalize your experience.</p>
+      <form id="onboarding-form">
+        <label for="user-name">Your Name:</label>
+        <input type="text" id="user-name" required>
+        <label for="age">Age:</label>
+        <input type="number" id="age" required>
+        <label for="height">Height (cm):</label>
+        <input type="number" id="height" required>
+        <label for="weight">Weight (kg):</label>
+        <input type="number" id="weight" required>
+
+        <label for="referred">Were you referred?</label>
+        <select id="referred">
+          <option value="no">No, I found this myself</option>
+          <option value="physio">Yes, by a Physiotherapist</option>
+          <option value="other">Yes, by another user/coach</option>
+        </select>
+
+        <label for="reason">What's your main reason for using ALIGN?</label>
+        <select id="reason">
+          <option value="fitness">Improve Fitness</option>
+          <option value="rehab">Rehabilitation / Pain Relief</option>
+          <option value="sports">Improve Sports Performance</option>
+        </select>
+
+        <label for="history">Any prior surgeries or fractures? (Even minor)</label>
+        <textarea id="history" rows="2" placeholder="e.g., 'Left knee surgery', 'Right shoulder fracture'"></textarea>
+
+        <button type="submit">Start Training</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="main-app" style="display: none;">
+    <h1>ALIGN Practice Mode</h1>
+
+    <div class="controls">
+      <select id="category-select">
+        <option value="">-- Select Category --</option>
+        <option value="yoga">Yoga</option>
+        <option value="cricket">Cricket</option> {/* Changed label */}
+        <option value="fitness">Fitness</option>
+      </select>
+      <select id="exercise-select">
+        <option value="">-- Select Exercise --</option>
+      </select>
+      <button id="start-session-btn">Start Session</button>
+      <button id="stop-session-btn" disabled>Stop Session</button>
+    </div>
+
+    <div class="container">
+      <video class="input_video" style="display: none;"></video>
+      <canvas class="output_canvas" width="640px" height="480px"></canvas>
+
+      <div id="feedback-popup" class="feedback-hidden">
+        <p id="feedback-text">Select an exercise to begin</p>
+      </div>
+
+      <div class="reference">
+        <h3>Correct Posture</h3>
+        <canvas id="reference-canvas" width="200" height="300"></canvas>
+      </div>
+    </div>
+
+    <div class="stats">
+      <h3>Live Accuracy: <span id="accuracy-score">0</span>%</h3>
+      <h3>Injury Risk: <span id="stress-score">Low</span></h3>
+    </div>
+
+    <div class="angle-report">
+      <h3>Live Ergonomic Report</h3>
+      <div id="angle-comparison">
+        <p>Select an exercise to see target angles.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="report-modal" style="display: none;">
+    <div class="modal-content report-content">
+      <h2>Session Report</h2>
+      <p id="report-quote">"Great job! Consistency is key."</p>
+
+      <div class="report-grid">
+        <div class="report-chart-container">
+          <h3>Accuracy Over Time</h3>
+          <canvas id="report-chart"></canvas>
+        </div>
+        <div class="report-details">
+          <h3>Key Focus Areas</h3>
+          <p><strong>Targeted Areas:</strong> <span id="report-target-parts"></span></p>
+
+          <h3>Your Improvement Plan</h3>
+          <ul id="report-suggestions">
+            </ul>
+
+          <h3>General Suggestion</h3>
+          <p id="report-general-suggestion"></p>
+        </div>
+      </div>
+
+      <button id="close-report-btn">Close Report</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
