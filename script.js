@@ -30,8 +30,9 @@ let reportChart;
 // --- Voice Feedback State ---
 let lastSpokenTime = 0;
 let lastPositiveSpokenTime = 0;
-const speakCooldown = 5000;
-const positiveFeedbackCooldown = 12000;
+let lastSpokenText = "";
+const speakCooldown = 12000; // Increased from 5s to 12s
+const positiveFeedbackCooldown = 25000; // Increased from 12s to 25s
 const synth = window.speechSynthesis;
 let voice;
 
@@ -41,19 +42,30 @@ window.speechSynthesis.onvoiceschanged = () => {
   if (!voice) voice = voices.find(v => v.lang.includes('en'));
 };
 
-function speak(text, isCorrection = false) {
+function speak(text, isCorrection = false, force = false) {
   const now = Date.now();
-  if (isCorrection) {
+
+  // High risk alerts should bypass normal cooldowns but still not spam instantly
+  if (force) {
+    if (now - lastSpokenTime < 5000) return; // 5s absolute minimum for high-risk spam
+  } else if (isCorrection) {
     if (now - lastSpokenTime < speakCooldown || synth.speaking) return;
-    lastSpokenTime = now;
+    if (text === lastSpokenText) return; // Don't repeat the exact same correction endlessly
   } else {
     if (now - lastPositiveSpokenTime < positiveFeedbackCooldown || synth.speaking) return;
-    lastPositiveSpokenTime = now;
   }
+
+  if (isCorrection || force) lastSpokenTime = now;
+  else lastPositiveSpokenTime = now;
+
+  lastSpokenText = text;
+
   const utterance = new SpeechSynthesisUtterance(text);
   if (voice) utterance.voice = voice;
-  utterance.rate = 1.1;
-  synth.cancel(); // Cancel previous speech to prioritize new feedback
+  utterance.rate = 1.05; // Slightly slower, more calming
+
+  if (force) synth.cancel(); // Only cancel/interrupt if it's a high-risk alert
+
   synth.speak(utterance);
 }
 
@@ -74,15 +86,15 @@ const EXERCISE_LIBRARY = {
         right_knee: { caution: [160, 175], high: [0, 155] },
       },
       referencePose: [
-        {x: 0.5, y: 0.15, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.15, v: 0}, {x: 0.5, y: 0.15, v: 0}, {x: 0.5, y: 0.15, v: 0}, {x: 0.5, y: 0.15, v: 0},
-        {x: 0.75, y: 0.25, v: 1}, {x: 0.25, y: 0.25, v: 1},
-        {x: 0.9, y: 0.25, v: 1}, {x: 0.1, y: 0.25, v: 1},
-        {x: 1.0, y: 0.25, v: 1}, {x: 0.0, y: 0.25, v: 1},
-        {x: 0.9, y: 0.2, v: 0}, {x: 0.1, y: 0.2, v: 0}, {x: 0.9, y: 0.2, v: 0}, {x: 0.1, y: 0.2, v: 0}, {x: 0.9, y: 0.2, v: 0}, {x: 0.1, y: 0.2, v: 0},
-        {x: 0.7, y: 0.5, v: 1}, {x: 0.3, y: 0.5, v: 1},
-        {x: 0.9, y: 0.65, v: 1}, {x: 0.3, y: 0.75, v: 1},
-        {x: 1.0, y: 0.8, v: 1}, {x: 0.3, y: 0.95, v: 1},
-        {x: 1.0, y: 0.85, v: 0}, {x: 0.3, y: 1.0, v: 0}, {x: 1.0, y: 0.8, v: 0}, {x: 0.3, y: 0.95, v: 0}
+        { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 },
+        { x: 0.75, y: 0.25, v: 1 }, { x: 0.25, y: 0.25, v: 1 },
+        { x: 0.9, y: 0.25, v: 1 }, { x: 0.1, y: 0.25, v: 1 },
+        { x: 1.0, y: 0.25, v: 1 }, { x: 0.0, y: 0.25, v: 1 },
+        { x: 0.9, y: 0.2, v: 0 }, { x: 0.1, y: 0.2, v: 0 }, { x: 0.9, y: 0.2, v: 0 }, { x: 0.1, y: 0.2, v: 0 }, { x: 0.9, y: 0.2, v: 0 }, { x: 0.1, y: 0.2, v: 0 },
+        { x: 0.7, y: 0.5, v: 1 }, { x: 0.3, y: 0.5, v: 1 },
+        { x: 0.9, y: 0.65, v: 1 }, { x: 0.3, y: 0.75, v: 1 },
+        { x: 1.0, y: 0.8, v: 1 }, { x: 0.3, y: 0.95, v: 1 },
+        { x: 1.0, y: 0.85, v: 0 }, { x: 0.3, y: 1.0, v: 0 }, { x: 1.0, y: 0.8, v: 0 }, { x: 0.3, y: 0.95, v: 0 }
       ]
     },
     tree_pose: {
@@ -96,15 +108,15 @@ const EXERCISE_LIBRARY = {
         left_knee: { caution: [160, 175], high: [0, 155] },
       },
       referencePose: [
-        {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.05, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0}, {x: 0.5, y: 0.1, v: 0},
-        {x: 0.6, y: 0.2, v: 1}, {x: 0.4, y: 0.2, v: 1},
-        {x: 0.6, y: 0.15, v: 1}, {x: 0.4, y: 0.15, v: 1},
-        {x: 0.5, y: 0.18, v: 1}, {x: 0.5, y: 0.18, v: 1},
-        {x: 0.5, y: 0.18, v: 0}, {x: 0.5, y: 0.18, v: 0}, {x: 0.5, y: 0.18, v: 0}, {x: 0.5, y: 0.18, v: 0}, {x: 0.5, y: 0.18, v: 0}, {x: 0.5, y: 0.18, v: 0},
-        {x: 0.6, y: 0.5, v: 1}, {x: 0.4, y: 0.5, v: 1},
-        {x: 0.4, y: 0.75, v: 1}, {x: 0.6, y: 0.55, v: 1},
-        {x: 0.4, y: 0.95, v: 1}, {x: 0.6, y: 0.6, v: 1},
-        {x: 0.4, y: 1.0, v: 0}, {x: 0.6, y: 0.65, v: 0}, {x: 0.4, y: 1.0, v: 0}, {x: 0.6, y: 0.65, v: 0}
+        { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 },
+        { x: 0.6, y: 0.2, v: 1 }, { x: 0.4, y: 0.2, v: 1 },
+        { x: 0.6, y: 0.15, v: 1 }, { x: 0.4, y: 0.15, v: 1 },
+        { x: 0.5, y: 0.18, v: 1 }, { x: 0.5, y: 0.18, v: 1 },
+        { x: 0.5, y: 0.18, v: 0 }, { x: 0.5, y: 0.18, v: 0 }, { x: 0.5, y: 0.18, v: 0 }, { x: 0.5, y: 0.18, v: 0 }, { x: 0.5, y: 0.18, v: 0 }, { x: 0.5, y: 0.18, v: 0 },
+        { x: 0.6, y: 0.5, v: 1 }, { x: 0.4, y: 0.5, v: 1 },
+        { x: 0.4, y: 0.75, v: 1 }, { x: 0.6, y: 0.55, v: 1 },
+        { x: 0.4, y: 0.95, v: 1 }, { x: 0.6, y: 0.6, v: 1 },
+        { x: 0.4, y: 1.0, v: 0 }, { x: 0.6, y: 0.65, v: 0 }, { x: 0.4, y: 1.0, v: 0 }, { x: 0.6, y: 0.65, v: 0 }
       ]
     },
   },
@@ -123,15 +135,15 @@ const EXERCISE_LIBRARY = {
         right_knee: { caution: [160, 180], high: [0, 120] },
       },
       referencePose: [
-        {x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},
-        {x: 0.6, y: 0.25, v: 1}, {x: 0.4, y: 0.25, v: 1},
-        {x: 0.65, y: 0.4, v: 1}, {x: 0.45, y: 0.45, v: 1},
-        {x: 0.6, y: 0.55, v: 1}, {x: 0.4, y: 0.6, v: 1},
-        {x: 0.6, y: 0.6, v: 0},{x: 0.4, y: 0.65, v: 0},{x: 0.6, y: 0.6, v: 0},{x: 0.4, y: 0.65, v: 0},{x: 0.6, y: 0.6, v: 0},{x: 0.4, y: 0.65, v: 0},
-        {x: 0.55, y: 0.55, v: 1}, {x: 0.45, y: 0.55, v: 1},
-        {x: 0.6, y: 0.75, v: 1}, {x: 0.4, y: 0.75, v: 1},
-        {x: 0.6, y: 0.95, v: 1}, {x: 0.4, y: 0.95, v: 1},
-        {x: 0.65, y: 1.0, v: 0},{x: 0.35, y: 1.0, v: 0},{x: 0.6, y: 1.0, v: 0},{x: 0.4, y: 1.0, v: 0}
+        { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 },
+        { x: 0.6, y: 0.25, v: 1 }, { x: 0.4, y: 0.25, v: 1 },
+        { x: 0.65, y: 0.4, v: 1 }, { x: 0.45, y: 0.45, v: 1 },
+        { x: 0.6, y: 0.55, v: 1 }, { x: 0.4, y: 0.6, v: 1 },
+        { x: 0.6, y: 0.6, v: 0 }, { x: 0.4, y: 0.65, v: 0 }, { x: 0.6, y: 0.6, v: 0 }, { x: 0.4, y: 0.65, v: 0 }, { x: 0.6, y: 0.6, v: 0 }, { x: 0.4, y: 0.65, v: 0 },
+        { x: 0.55, y: 0.55, v: 1 }, { x: 0.45, y: 0.55, v: 1 },
+        { x: 0.6, y: 0.75, v: 1 }, { x: 0.4, y: 0.75, v: 1 },
+        { x: 0.6, y: 0.95, v: 1 }, { x: 0.4, y: 0.95, v: 1 },
+        { x: 0.65, y: 1.0, v: 0 }, { x: 0.35, y: 1.0, v: 0 }, { x: 0.6, y: 1.0, v: 0 }, { x: 0.4, y: 1.0, v: 0 }
       ]
     },
     bowling_stride: {
@@ -147,15 +159,15 @@ const EXERCISE_LIBRARY = {
         right_elbow: { caution: [140, 160], high: [0, 130] },
       },
       referencePose: [
-        {x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},
-        {x: 0.6, y: 0.25, v: 1}, {x: 0.4, y: 0.25, v: 1},
-        {x: 0.8, y: 0.2, v: 1}, {x: 0.3, y: 0.4, v: 1},
-        {x: 0.95, y: 0.15, v: 1}, {x: 0.2, y: 0.5, v: 1},
-        {x: 0.9, y: 0.1, v: 0},{x: 0.2, y: 0.55, v: 0},{x: 0.9, y: 0.1, v: 0},{x: 0.2, y: 0.55, v: 0},{x: 0.9, y: 0.1, v: 0},{x: 0.2, y: 0.55, v: 0},
-        {x: 0.55, y: 0.5, v: 1}, {x: 0.45, y: 0.5, v: 1},
-        {x: 0.2, y: 0.7, v: 1}, {x: 0.7, y: 0.65, v: 1},
-        {x: 0.1, y: 0.9, v: 1}, {x: 0.8, y: 0.8, v: 1},
-        {x: 0.05, y: 0.95, v: 0},{x: 0.85, y: 0.85, v: 0},{x: 0.05, y: 0.9, v: 0},{x: 0.85, y: 0.8, v: 0}
+        { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 },
+        { x: 0.6, y: 0.25, v: 1 }, { x: 0.4, y: 0.25, v: 1 },
+        { x: 0.8, y: 0.2, v: 1 }, { x: 0.3, y: 0.4, v: 1 },
+        { x: 0.95, y: 0.15, v: 1 }, { x: 0.2, y: 0.5, v: 1 },
+        { x: 0.9, y: 0.1, v: 0 }, { x: 0.2, y: 0.55, v: 0 }, { x: 0.9, y: 0.1, v: 0 }, { x: 0.2, y: 0.55, v: 0 }, { x: 0.9, y: 0.1, v: 0 }, { x: 0.2, y: 0.55, v: 0 },
+        { x: 0.55, y: 0.5, v: 1 }, { x: 0.45, y: 0.5, v: 1 },
+        { x: 0.2, y: 0.7, v: 1 }, { x: 0.7, y: 0.65, v: 1 },
+        { x: 0.1, y: 0.9, v: 1 }, { x: 0.8, y: 0.8, v: 1 },
+        { x: 0.05, y: 0.95, v: 0 }, { x: 0.85, y: 0.85, v: 0 }, { x: 0.05, y: 0.9, v: 0 }, { x: 0.85, y: 0.8, v: 0 }
       ]
     }
   },
@@ -172,15 +184,15 @@ const EXERCISE_LIBRARY = {
         right_knee: { caution: [95, 110], high: [0, 60] },
       },
       referencePose: [
-        {x: 0.5, y: 0.15, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.15, v: 0},{x: 0.5, y: 0.15, v: 0},{x: 0.5, y: 0.15, v: 0},{x: 0.5, y: 0.15, v: 0},
-        {x: 0.7, y: 0.35, v: 1}, {x: 0.3, y: 0.35, v: 1},
-        {x: 0.75, y: 0.5, v: 1}, {x: 0.25, y: 0.5, v: 1},
-        {x: 0.8, y: 0.55, v: 1}, {x: 0.2, y: 0.55, v: 1},
-        {x: 0.8, y: 0.6, v: 0},{x: 0.2, y: 0.6, v: 0},{x: 0.8, y: 0.6, v: 0},{x: 0.2, y: 0.6, v: 0},{x: 0.8, y: 0.6, v: 0},{x: 0.2, y: 0.6, v: 0},
-        {x: 0.65, y: 0.65, v: 1}, {x: 0.35, y: 0.65, v: 1},
-        {x: 0.8, y: 0.65, v: 1}, {x: 0.2, y: 0.65, v: 1},
-        {x: 0.7, y: 0.9, v: 1}, {x: 0.3, y: 0.9, v: 1},
-        {x: 0.75, y: 0.95, v: 0},{x: 0.25, y: 0.95, v: 0},{x: 0.7, y: 0.95, v: 0},{x: 0.3, y: 0.95, v: 0}
+        { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 }, { x: 0.5, y: 0.15, v: 0 },
+        { x: 0.7, y: 0.35, v: 1 }, { x: 0.3, y: 0.35, v: 1 },
+        { x: 0.75, y: 0.5, v: 1 }, { x: 0.25, y: 0.5, v: 1 },
+        { x: 0.8, y: 0.55, v: 1 }, { x: 0.2, y: 0.55, v: 1 },
+        { x: 0.8, y: 0.6, v: 0 }, { x: 0.2, y: 0.6, v: 0 }, { x: 0.8, y: 0.6, v: 0 }, { x: 0.2, y: 0.6, v: 0 }, { x: 0.8, y: 0.6, v: 0 }, { x: 0.2, y: 0.6, v: 0 },
+        { x: 0.65, y: 0.65, v: 1 }, { x: 0.35, y: 0.65, v: 1 },
+        { x: 0.8, y: 0.65, v: 1 }, { x: 0.2, y: 0.65, v: 1 },
+        { x: 0.7, y: 0.9, v: 1 }, { x: 0.3, y: 0.9, v: 1 },
+        { x: 0.75, y: 0.95, v: 0 }, { x: 0.25, y: 0.95, v: 0 }, { x: 0.7, y: 0.95, v: 0 }, { x: 0.3, y: 0.95, v: 0 }
       ]
     },
     bicep_curl: {
@@ -194,15 +206,15 @@ const EXERCISE_LIBRARY = {
         left_elbow: { caution: [90, 120], high: [160, 180] },
       },
       referencePose: [
-        {x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.05, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},{x: 0.5, y: 0.1, v: 0},
-        {x: 0.65, y: 0.2, v: 1}, {x: 0.35, y: 0.2, v: 1},
-        {x: 0.65, y: 0.45, v: 1}, {x: 0.35, y: 0.45, v: 1},
-        {x: 0.65, y: 0.25, v: 1}, {x: 0.35, y: 0.25, v: 1},
-        {x: 0.65, y: 0.2, v: 0},{x: 0.35, y: 0.2, v: 0},{x: 0.65, y: 0.2, v: 0},{x: 0.35, y: 0.2, v: 0},{x: 0.65, y: 0.2, v: 0},{x: 0.35, y: 0.2, v: 0},
-        {x: 0.6, y: 0.5, v: 1}, {x: 0.4, y: 0.5, v: 1},
-        {x: 0.6, y: 0.75, v: 1}, {x: 0.4, y: 0.75, v: 1},
-        {x: 0.6, y: 0.95, v: 1}, {x: 0.4, y: 0.95, v: 1},
-        {x: 0.65, y: 1.0, v: 0},{x: 0.35, y: 1.0, v: 0},{x: 0.6, y: 1.0, v: 0},{x: 0.4, y: 1.0, v: 0}
+        { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.05, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 }, { x: 0.5, y: 0.1, v: 0 },
+        { x: 0.65, y: 0.2, v: 1 }, { x: 0.35, y: 0.2, v: 1 },
+        { x: 0.65, y: 0.45, v: 1 }, { x: 0.35, y: 0.45, v: 1 },
+        { x: 0.65, y: 0.25, v: 1 }, { x: 0.35, y: 0.25, v: 1 },
+        { x: 0.65, y: 0.2, v: 0 }, { x: 0.35, y: 0.2, v: 0 }, { x: 0.65, y: 0.2, v: 0 }, { x: 0.35, y: 0.2, v: 0 }, { x: 0.65, y: 0.2, v: 0 }, { x: 0.35, y: 0.2, v: 0 },
+        { x: 0.6, y: 0.5, v: 1 }, { x: 0.4, y: 0.5, v: 1 },
+        { x: 0.6, y: 0.75, v: 1 }, { x: 0.4, y: 0.75, v: 1 },
+        { x: 0.6, y: 0.95, v: 1 }, { x: 0.4, y: 0.95, v: 1 },
+        { x: 0.65, y: 1.0, v: 0 }, { x: 0.35, y: 1.0, v: 0 }, { x: 0.6, y: 1.0, v: 0 }, { x: 0.4, y: 1.0, v: 0 }
       ]
     }
   }
@@ -214,6 +226,22 @@ let currentCategory = "";
 let currentExerciseKey = "";
 let isSessionRunning = false;
 let sessionReports = [];
+let bestSessionAccuracy = 0;
+let sessionStartTime = 0;
+let sessionTimerInterval;
+let sessionDurationSeconds = 0;
+let caloriesBurned = 0;
+let actionCount = 0;
+let isCurrentlyPerfect = false;
+let isUserActive = false;
+let bestPoseDataUrl = "";
+const MET_VALUES = { yoga: 3.0, cricket: 4.5, fitness: 5.0 };
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
 
 const POSITIVE_FEEDBACK = [
   "Great form!", "Perfect alignment!", "Awesome job!",
@@ -226,6 +254,106 @@ const MOTIVATIONAL_QUOTES = [
   "Excellent work! Rest, recover, and come back stronger.",
   "Keep pushing your limits safely! Great job today."
 ];
+
+// --- 3.5 VOICE COMMAND ENGINE ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+let isListening = false;
+
+function initVoiceCommands() {
+  if (!SpeechRecognition) {
+    console.warn("Speech Recognition not supported in this browser.");
+    document.getElementById('voice-status').innerText = "Voice commands unsupported.";
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+
+  const voiceAliases = {
+    'warrior': { cat: 'yoga', ex: 'warrior_ii' },
+    'tree pose': { cat: 'yoga', ex: 'tree_pose' },
+    'tree': { cat: 'yoga', ex: 'tree_pose' },
+    'batting': { cat: 'cricket', ex: 'batting_stance' },
+    'bowling': { cat: 'cricket', ex: 'bowling_stride' },
+    'squat': { cat: 'fitness', ex: 'squat' },
+    'curl': { cat: 'fitness', ex: 'bicep_curl' },
+    'bicep': { cat: 'fitness', ex: 'bicep_curl' },
+    'yoga': { cat: 'yoga', ex: 'warrior_ii' },
+    'cricket': { cat: 'cricket', ex: 'batting_stance' },
+    'fitness': { cat: 'fitness', ex: 'squat' }
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+    console.log("🗣️ Voice Command:", transcript);
+
+    const isCloseCmd = ['close report', 'close', 'dismiss'].some(cmd => transcript.includes(cmd));
+    if (isCloseCmd && reportModal.style.display === 'flex') {
+      closeReportBtn.click();
+      return;
+    }
+
+    // Stop and report commands
+    const isReportCmd = ['report', 'stop', 'end', 'finish', 'done'].some(cmd => transcript.includes(cmd));
+    if (isReportCmd) {
+      if (!stopSessionBtn.disabled) {
+        stopSessionBtn.click();
+      } else {
+        if (sessionReports.length === 0) {
+          speak("You must finish a session first before I can analyze a report.");
+        } else {
+          generateReport();
+        }
+      }
+      return;
+    }
+
+    // Start commands
+    const isStartCmd = ['start', 'begin', 'go'].some(cmd => transcript.includes(cmd));
+    if (isStartCmd) {
+      if (!startSessionBtn.disabled) {
+        startSessionBtn.click();
+      } else if (isSessionRunning) {
+        speak("A session is already running.");
+      }
+      return;
+    }
+
+    // Dynamic Exercise & Category Switching (works instantly without "change" verb)
+    for (const [alias, data] of Object.entries(voiceAliases)) {
+      if (transcript.includes(alias)) {
+        if (categorySelect.value !== data.cat || exerciseSelect.value !== data.ex) {
+          categorySelect.value = data.cat;
+          categorySelect.dispatchEvent(new Event('change'));
+          exerciseSelect.value = data.ex;
+          exerciseSelect.dispatchEvent(new Event('change'));
+          // Feedback happens automatically inside the select event listener
+        } else {
+          speak(`You are already doing ${EXERCISE_LIBRARY[data.cat][data.ex].name}.`);
+        }
+        return;
+      }
+    }
+  };
+
+  recognition.onend = () => {
+    if (isListening) {
+      try { recognition.start(); } catch (e) { }
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'no-speech') return; // Completely normal, ignore
+    console.warn("Speech Recognition Error:", e.error);
+    if (e.error === 'not-allowed') {
+      document.getElementById('voice-status').innerText = "Mic access blocked.";
+      isListening = false;
+    }
+  };
+}
 
 // --- 4. ONBOARDING & PERSONALIZATION ---
 onboardingForm.addEventListener('submit', (e) => {
@@ -241,7 +369,21 @@ onboardingForm.addEventListener('submit', (e) => {
   };
   onboardingModal.style.display = 'none';
   mainApp.style.display = 'block';
-  speak(`Hi ${userData.name}, welcome to ALIGN! Please select an exercise to begin.`);
+
+  // Real-time time-of-day greeting
+  const hour = new Date().getHours();
+  let greeting = "Good evening";
+  if (hour < 12) greeting = "Good morning";
+  else if (hour < 18) greeting = "Good afternoon";
+
+  speak(`${greeting} ${userData.name}, welcome to ALIGN! Please select a category and an exercise, then click the Start Session button to begin your workout.`);
+
+  // Kickoff hands-free voice engine
+  initVoiceCommands();
+  if (recognition) {
+    isListening = true;
+    try { recognition.start(); } catch (e) { console.error(e); }
+  }
 });
 
 function getPersonalizedTolerance(jointName) {
@@ -273,9 +415,12 @@ exerciseSelect.addEventListener('change', () => {
     angleComparison.innerHTML = '<p>Select an exercise.</p>';
     return;
   }
-  drawReferencePose(currentExerciseKey);
+  bestSessionAccuracy = 0;
   updateAngleReport(null);
-  speak(`Selected ${EXERCISE_LIBRARY[currentCategory][currentExerciseKey].name}. Click Start Session when ready.`);
+
+  drawReferencePose(currentExerciseKey);
+
+  speak(`You selected ${EXERCISE_LIBRARY[currentCategory][currentExerciseKey].name}. Please step back so your full body is visible, and click Start Session when you are ready.`);
 });
 
 startSessionBtn.addEventListener('click', () => {
@@ -285,6 +430,32 @@ startSessionBtn.addEventListener('click', () => {
   }
   isSessionRunning = true;
   sessionReports = [];
+  bestSessionAccuracy = 0;
+
+  // Custom Analytics Init
+  bestPoseDataUrl = "";
+  sessionDurationSeconds = 0;
+  caloriesBurned = 0;
+  actionCount = 0;
+  isCurrentlyPerfect = false;
+  document.getElementById('live-time').innerText = "00:00";
+  document.getElementById('live-calories').innerText = "0.0";
+  document.getElementById('live-actions').innerText = "0";
+  if (document.getElementById('report-best-image')) document.getElementById('report-best-image').style.display = 'none';
+  isUserActive = false;
+
+  sessionTimerInterval = setInterval(() => {
+    // Only increment stats if the user is actively attempting the pose (>50% accuracy)
+    if (isUserActive) {
+      sessionDurationSeconds++;
+      let met = MET_VALUES[currentCategory] || 4.0;
+      let weight = parseFloat(userData.weight) || 70;
+      caloriesBurned = met * weight * (sessionDurationSeconds / 3600);
+      document.getElementById('live-time').innerText = formatTime(sessionDurationSeconds);
+      document.getElementById('live-calories').innerText = caloriesBurned.toFixed(1);
+    }
+  }, 1000);
+
   startSessionBtn.disabled = true;
   stopSessionBtn.disabled = false;
   categorySelect.disabled = true;
@@ -295,6 +466,7 @@ startSessionBtn.addEventListener('click', () => {
 });
 
 stopSessionBtn.addEventListener('click', () => {
+  clearInterval(sessionTimerInterval);
   isSessionRunning = false;
   startSessionBtn.disabled = false;
   stopSessionBtn.disabled = true;
@@ -325,43 +497,76 @@ function drawReferencePose(poseKey) {
   }
   const w = referenceCanvas.width, h = referenceCanvas.height;
   referenceCtx.clearRect(0, 0, w, h);
-  const scaledLandmarks = poseData.referencePose.map(lm => ({
-    x: lm.x * w, y: lm.y * h, visibility: lm.v >= 0 ? 1.0 : 0
-  }));
-  if (typeof drawConnectors === 'function' && typeof drawLandmarks === 'function') {
-    drawConnectors(referenceCtx, scaledLandmarks, POSE_CONNECTIONS, { color: '#007bff', lineWidth: 3 });
-    drawLandmarks(referenceCtx, scaledLandmarks, { color: '#0056b3', radius: 3, visibilityMin: 0.5 });
+
+  const drawSkel = () => {
+    try {
+      const scaledLandmarks = poseData.referencePose.map(lm => ({
+        x: lm.x, y: lm.y, visibility: lm.v !== undefined ? (lm.v >= 0 ? 1.0 : 0) : 1.0
+      }));
+      if (typeof drawConnectors === 'function' && typeof drawLandmarks === 'function') {
+        // Draw skeleton clearly
+        drawConnectors(referenceCtx, scaledLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
+        drawLandmarks(referenceCtx, scaledLandmarks, { color: '#FF0000', radius: 3, visibilityMin: 0.5 });
+      }
+    } catch (e) { console.error("Could not draw reference skeleton:", e); }
+  };
+
+  if (poseData.image) {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      referenceCtx.clearRect(0, 0, w, h);
+      const imgAspect = img.width / img.height;
+      const canvasAspect = w / h;
+      let drawW = w, drawH = h, offX = 0, offY = 0;
+      if (imgAspect > canvasAspect) {
+        drawW = h * imgAspect;
+        offX = (w - drawW) / 2;
+      } else {
+        drawH = w / imgAspect;
+        offY = (h - drawH) / 2;
+      }
+      referenceCtx.globalAlpha = 0.6;
+      referenceCtx.drawImage(img, offX, offY, drawW, drawH);
+      referenceCtx.globalAlpha = 1.0;
+      drawSkel();
+    };
+    // Failsafe in case image URL is blocked
+    img.onerror = () => { drawSkel(); };
+    img.src = poseData.image;
   } else {
-    console.error("MediaPipe drawing utils not loaded correctly.");
+    drawSkel();
   }
 }
 
 // --- 6. CORE SCORING & FEEDBACK ---
 function getHumanFeedback(key, delta) {
-  const direction = delta > 0 ? "too high, try lowering it" : "too low, try raising it";
   const jointName = key.replace('_', ' ');
+
   if (key.includes('knee')) {
-    if (delta < -15) return `Try straightening your ${jointName} slightly. Bending too much adds stress.`;
-    if (delta > 15) return `Bend your ${jointName} a bit more, ${userData.name}. Keep it strong!`;
+    if (delta < -15) return `Try straightening your ${jointName} slightly. Repeating this deep bend places severe shearing force on your patellar tendon, leading to chronic Runner's Knee in the future.`;
+    if (delta > 15) return `Bend your ${jointName} more and avoid locking it. Locking your joint repeatedly transfers shock directly to your bone, rapidly increasing your risk of cartilage degradation and early osteoarthritis.`;
   }
   if (key.includes('elbow')) {
-    if (delta < -15) return `Straighten your ${jointName} slightly. Almost there!`;
-    if (delta > 15) return `Bring your ${jointName} in slightly. Great focus, ${userData.name}!`;
+    if (delta < -15) return `Straighten your ${jointName} a bit more. Bending it too sharply under tension chronically strains your ligaments, risking severe Tennis or Golfer's Elbow over time.`;
+    if (delta > 15) return `Do not lock your ${jointName} out completely. Shifting the load away from the active muscle to connective tissues heavily invites joint inflammation and severe ligament sprains.`;
   }
-  return `Your ${jointName} angle is ${Math.abs(delta).toFixed(0)} degrees ${direction}.`;
+
+  const directionStr = delta > 0 ? "too far extended" : "too deeply bent";
+  return `Adjust your ${jointName} as it is ${directionStr}. Failing to correct this alignment alters your whole kinetic chain, inevitably causing muscular imbalances and future overcompensation injuries.`;
 }
 
 function calculateAngle(a, b, c) {
   if (!a || !b || !c || a.visibility < 0.3 || b.visibility < 0.3 || c.visibility < 0.3) {
     return null;
   }
-  const ab = { x: b.x - a.x, y: b.y - a.y };
+  const ba = { x: a.x - b.x, y: a.y - b.y };
   const bc = { x: c.x - b.x, y: c.y - b.y };
-  const dotProduct = ab.x * bc.x + ab.y * bc.y;
-  const magAB = Math.sqrt(ab.x * ab.x + ab.y * ab.y);
+  const dotProduct = ba.x * bc.x + ba.y * bc.y;
+  const magBA = Math.sqrt(ba.x * ba.x + ba.y * ba.y);
   const magBC = Math.sqrt(bc.x * bc.x + bc.y * bc.y);
-  if (magAB === 0 || magBC === 0) return null;
-  let cosTheta = dotProduct / (magAB * magBC);
+  if (magBA === 0 || magBC === 0) return null;
+  let cosTheta = dotProduct / (magBA * magBC);
   cosTheta = Math.max(-1, Math.min(1, cosTheta));
   return Math.acos(cosTheta) * (180 / Math.PI);
 }
@@ -417,11 +622,12 @@ function comparePose(userAngles, targetPose, riskRangesConfig) {
       continue;
     }
 
-    const tolerance = getPersonalizedTolerance(key.split('_')[0]);
+    const tolerance = getPersonalizedTolerance(key.replace('_', ' '));
     const diff = Math.abs(userAngle - targetAngle);
     const delta = userAngle - targetAngle;
     const isCorrect = (diff <= tolerance);
-    let angleScore = Math.max(0, 100 - (diff / targetAngle) * 100);
+    // Normalize performance scoring against a fixed 90 degree margin for consistency
+    let angleScore = Math.max(0, 100 - (diff / 90) * 100);
     totalScore += angleScore * weight;
     totalWeight += weight;
 
@@ -465,17 +671,17 @@ function updateUI(report) {
     const errorMsg = `HIGH RISK! ${report.errors[0] || 'Adjust form!'}`;
     feedbackText.innerText = errorMsg;
     feedbackPopup.className = 'feedback-wrong';
-    speak(`${userData.name}, ${report.speakableError || "High risk detected!"}`, true);
+    speak(`${userData.name}, ${report.speakableError || "High risk detected!"}`, true, true);
   } else if (report.errors.length > 0) {
     const errorMsg = `Correct: ${report.errors[0] || ''}`;
     feedbackText.innerText = errorMsg;
     feedbackPopup.className = 'feedback-caution';
-    speak(`${userData.name}, ${report.speakableError}`, true);
+    speak(`${userData.name}, ${report.speakableError}`, true, false);
   } else {
     feedbackText.innerText = `Great Form! 🔥`;
     feedbackPopup.className = 'feedback-correct';
     const positiveMsg = POSITIVE_FEEDBACK[Math.floor(Math.random() * POSITIVE_FEEDBACK.length)];
-    speak(`${positiveMsg}, ${userData.name}!`, false);
+    speak(`${positiveMsg}, ${userData.name}!`, false, false);
   }
   updateAngleReport(report.jointReports);
 }
@@ -509,6 +715,18 @@ function generateReport() {
   if (sessionReports.length === 0) {
     speak("Session was too short, no report generated.");
     return;
+  }
+
+  // Populate custom stats elements
+  document.getElementById('report-duration').innerText = formatTime(sessionDurationSeconds);
+  document.getElementById('report-calories').innerText = caloriesBurned.toFixed(1);
+  document.getElementById('report-actions').innerText = actionCount;
+
+  if (bestPoseDataUrl) {
+    document.getElementById('report-best-image').src = bestPoseDataUrl;
+    document.getElementById('report-best-image').style.display = 'block';
+  } else {
+    document.getElementById('report-best-image').style.display = 'none';
   }
 
   const quote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
@@ -546,7 +764,7 @@ function generateReport() {
   for (const key in avgDeltas) {
     const avgDelta = avgDeltas[key] / jointCounts[key];
     const averageJointRisk = avgRisk[key] / jointCounts[key];
-    const tolerance = getPersonalizedTolerance(key.split('_')[0]);
+    const tolerance = getPersonalizedTolerance(key.replace('_', ' '));
     if (averageJointRisk > maxAvgRisk) { maxAvgRisk = averageJointRisk; highestRiskJoint = key; }
     if (Math.abs(avgDelta) > tolerance || averageJointRisk >= 1) {
       hasSuggestions = true;
@@ -562,6 +780,8 @@ function generateReport() {
   if (!hasSuggestions) reportSuggestions.innerHTML = "<li>Your form was excellent! No major corrections needed.</li>";
 
   const finalAvgAccuracy = totalOverallAccuracy / sessionReports.length;
+  document.getElementById('report-total-accuracy').innerText = finalAvgAccuracy.toFixed(0);
+
   let generalSuggestionText = "";
   if (finalAvgAccuracy > 90) generalSuggestionText = `Fantastic consistency, ${userData.name}! Expert level form.`;
   else if (finalAvgAccuracy > 75) generalSuggestionText = `Great work! Focus on those minor suggestions to hit 90%.`;
@@ -570,7 +790,7 @@ function generateReport() {
   reportGeneralSuggestion.innerText = generalSuggestionText;
 
   reportModal.style.display = 'flex';
-  speak(`${userData.name}, your session report is ready. You averaged ${finalAvgAccuracy.toFixed(0)} percent accuracy.`);
+  speak(`${userData.name}, your session report is ready.`, false, true);
 }
 
 // --- 9. INITIALIZE MEDIAPIPE ---
@@ -624,9 +844,82 @@ function onResults(results) {
     const riskRangesConfig = targetPose.riskRanges;
     const report = comparePose(userAngles, targetPose, riskRangesConfig);
 
+    // Live on-canvas error highlighting
+    report.jointReports.forEach(joint => {
+      if (!joint.isCorrect && joint.user !== null) {
+        let landmarkIdx = -1;
+        if (joint.key === 'left_knee') landmarkIdx = 25;
+        if (joint.key === 'right_knee') landmarkIdx = 26;
+        if (joint.key === 'left_elbow') landmarkIdx = 13;
+        if (joint.key === 'right_elbow') landmarkIdx = 14;
+
+        if (landmarkIdx !== -1) {
+          const lm = results.poseLandmarks[landmarkIdx];
+          const x = lm.x * canvasElement.width;
+          const y = lm.y * canvasElement.height;
+
+          // Red highlight circle
+          canvasCtx.beginPath();
+          canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+          canvasCtx.fill();
+          canvasCtx.lineWidth = 3;
+          canvasCtx.strokeStyle = 'white';
+          canvasCtx.stroke();
+
+          // Natural language alert (shortened for space)
+          const feedbackText = getHumanFeedback(joint.key, joint.delta).split('.')[0];
+
+          canvasCtx.font = "bold 16px Arial";
+          const textWidth = canvasCtx.measureText(feedbackText).width;
+
+          // Text background for readability
+          canvasCtx.fillStyle = "rgba(0, 0, 0, 0.7)";
+          canvasCtx.fillRect(x + 15, y - 18, textWidth + 10, 24);
+
+          canvasCtx.fillStyle = "yellow";
+          canvasCtx.fillText(feedbackText, x + 20, y);
+        }
+      }
+    });
+
     if (isSessionRunning) {
+      // Pause clock and calories if user breaks form entirely or isn't trying
+      isUserActive = (report.overallAccuracy >= 50);
+
       updateUI(report);
-      sessionReports.push(report);
+
+      if (isUserActive) {
+        sessionReports.push(report);
+      }
+
+      // Action (Rep) counting
+      if (report.overallAccuracy >= 80) {
+        if (!isCurrentlyPerfect) {
+          isCurrentlyPerfect = true;
+          actionCount++;
+          document.getElementById('live-actions').innerText = actionCount;
+        }
+      } else {
+        isCurrentlyPerfect = false;
+      }
+
+      // Snapshot correct posture
+      if (report.overallAccuracy > bestSessionAccuracy && report.overallAccuracy >= 80) {
+        bestSessionAccuracy = report.overallAccuracy;
+
+        // Save to bestPoseDataUrl and localStorage
+        const snapCanvas = document.createElement('canvas');
+        snapCanvas.width = canvasElement.width;
+        snapCanvas.height = canvasElement.height;
+        const sCtx = snapCanvas.getContext('2d');
+        sCtx.drawImage(results.image, 0, 0, snapCanvas.width, snapCanvas.height);
+        if (typeof drawConnectors === 'function') {
+          drawConnectors(sCtx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
+          drawLandmarks(sCtx, results.poseLandmarks, { color: '#FF0000', radius: 2 });
+        }
+        bestPoseDataUrl = snapCanvas.toDataURL('image/jpeg', 0.8);
+      }
     } else {
       updateAngleReport(report.jointReports);
     }
