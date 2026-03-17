@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>ALIGN - AI Biomechanical Coach</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
   <div class="video-container">
@@ -65,6 +67,7 @@
       </select>
       <button id="start-session-btn">Start Session</button>
       <button id="stop-session-btn" disabled>Stop Session</button>
+      <div id="voice-status" class="voice-listening">🎙️ Listening for commands...</div>
     </div>
 
     <div class="container">
@@ -84,6 +87,9 @@
     <div class="stats">
       <h3>Live Accuracy: <span id="accuracy-score">0</span>%</h3>
       <h3>Injury Risk: <span id="stress-score">Low</span></h3>
+      <h3>Time: <span id="live-time">00:00</span></h3>
+      <h3>Calories: <span id="live-calories">0.0</span> kcal</h3>
+      <h3>Form Hits: <span id="live-actions">0</span></h3>
     </div>
 
     <div class="angle-report">
@@ -96,8 +102,12 @@
 
   <div id="report-modal" style="display: none;">
     <div class="modal-content report-content">
-      <h2>Session Report</h2>
-      <p id="report-quote">"Great job! Consistency is key."</p>
+      <h2 style="text-align: center; margin-bottom: 5px;">Session Report: <span id="report-total-accuracy"
+          style="color: #007bff;">0</span>%</h2>
+      <p id="report-quote" style="margin-top: 0;">"Great job! Consistency is key."</p>
+
+      <img id="report-best-image" src="" alt="Best Posture"
+        style="width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; border: 2px solid #007bff; display: none; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
 
       <div class="report-grid">
         <div class="report-chart-container">
@@ -105,12 +115,18 @@
           <canvas id="report-chart"></canvas>
         </div>
         <div class="report-details">
+          <div class="session-metrics"
+            style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            <p><strong>Duration:</strong> <span id="report-duration">00:00</span></p>
+            <p><strong>Calories Burned:</strong> <span id="report-calories">0</span> kcal</p>
+            <p><strong>Perfect Form Hits:</strong> <span id="report-actions">0</span> occurences</p>
+          </div>
           <h3>Key Focus Areas</h3>
           <p><strong>Targeted Areas:</strong> <span id="report-target-parts"></span></p>
 
           <h3>Your Improvement Plan</h3>
           <ul id="report-suggestions">
-            </ul>
+          </ul>
 
           <h3>General Suggestion</h3>
           <p id="report-general-suggestion"></p>
@@ -126,4 +142,5 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>
